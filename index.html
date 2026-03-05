@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fractals</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            margin-top: 5px;
+            margin-bottom: 5px;
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            font-weight: 600;
+        }
+
+        .layout {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .canvas-area {
+            flex: 1;
+            min-width: 0;
+            height: 100%;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #f0f0f0;
+        }
+
+        .sidebar {
+            width: 200px;
+            height: 100%;
+            box-sizing: border-box;
+            border-left: 1px solid #ccc;
+            background: #fafafa;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .buttons-container-col {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .buttons-container-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="layout">
+        <div class="canvas-area">
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <aside class="sidebar">
+            <h6>Examples:</h6>
+            <div class="buttons-container-col">
+                <button type="button" id="button-clear">Clear</button>
+                <button type="button" id="button-spike">Spike in the Road</button>
+                <button type="button" id="button-spike-colored">Spike in the Road (colored)</button>
+                <button type="button" id="button-triangle-star">Triangle-Star</button>
+                <button type="button" id="button-triangle-star-colored">Triangle-Star (colored)</button>
+                <button type="button" id="button-steps">Steps</button>
+                <button type="button" id="button-steps-colored">Steps (colored)</button>
+                <button type="button" id="button-160-degrees-corner">160° corner</button>
+                <button type="button" id="button-160-degrees-corner-colored">160° corner (colored)</button>
+                <button type="button" id="button-170-degrees-corner">170° corner</button>
+                <button type="button" id="button-170-degrees-corner-colored">170° corner (colored)</button>
+                <button type="button" id="button-dragon">Dragon Curve</button>
+                <button type="button" id="button-dragon-colored">Dragon Curve (colored)</button>
+            </div>
+            <h6>Iterations:</h6>
+            <div class="buttons-container-row">
+                <button type="button" class="button-iterations" data-iterations="1">1</button>
+                <button type="button" class="button-iterations" data-iterations="2">2</button>
+                <button type="button" class="button-iterations" data-iterations="3">3</button>
+                <button type="button" class="button-iterations" data-iterations="4">4</button>
+                <button type="button" class="button-iterations" data-iterations="5">5</button>
+            </div>
+            <h6>Danger Zone, handle with care:</h6>
+            <div class="buttons-container-row">
+                <button type="button" class="button-iterations" data-iterations="6">6</button>
+                <button type="button" class="button-iterations" data-iterations="7">7</button>
+                <button type="button" class="button-iterations" data-iterations="8">8</button>
+                <button type="button" class="button-iterations" data-iterations="9">9</button>
+                <button type="button" class="button-iterations" data-iterations="10">10</button>
+            </div>
+            <h6>Really Really Danger Zone, do NOT use with Triangel-Star!</h6>
+            <div class="buttons-container-row">
+                <button type="button" class="button-iterations" data-iterations="11">11</button>
+                <button type="button" class="button-iterations" data-iterations="12">12</button>
+                <button type="button" class="button-iterations" data-iterations="13">13</button>
+                <button type="button" class="button-iterations" data-iterations="14">14</button>
+                <button type="button" class="button-iterations" data-iterations="15">15</button>
+            </div>
+            <h6>Use these ONLY with Dragon-Curve!</h6>
+            <div class="buttons-container-row">
+                <button type="button" class="button-iterations" data-iterations="16">16</button>
+                <button type="button" class="button-iterations" data-iterations="17">17</button>
+                <button type="button" class="button-iterations" data-iterations="18">18</button>
+                <button type="button" class="button-iterations" data-iterations="19">19</button>
+                <button type="button" class="button-iterations" data-iterations="20">20</button>
+            </div>
+            <h6>Actions:</h6>
+            <div id="actions-container" class="buttons-container-col"></div>
+            <hr />
+            <h6>Add action:</h6>
+            <div class="buttons-container-col">
+                <select id="select-action-to-add">
+                    <option value="WALK">DRAW</option>
+                    <option value="TURN_LEFT">TURN LEFT</option>
+                    <option value="TURN_RIGHT">TURN RIGHT</option>
+                    <option value="SET_STROKE_STYLE">SET STROKE COLOR</option>
+                </select>
+                <input id="input-amount-to-add" type="text" value="90" />
+                <button type="button" id="button-add-action">Add Action</button>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        const actionsContainer = document.getElementById("actions-container");
+
+        const DEBOUNCE_DELAY_MS = 100;
+
+        const ANGLE_RIGHT = 0;
+        const ANGLE_DOWN = 90;
+        const ANGLE_LEFT = 180;
+        const ANGLE_UP = 270;
+
+        const ACTION_TURN_LEFT = 'TURN_LEFT';
+        const ACTION_TURN_RIGHT = 'TURN_RIGHT';
+        const ACTION_WALK = 'WALK';
+        const ACTION_SET_STROKE_STYLE = 'SET_STROKE_STYLE';
+
+        const actionsSpikeInTheRoad = [
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+            {
+                action: ACTION_TURN_LEFT,
+                amount: 45,
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+            {
+                action: ACTION_TURN_RIGHT,
+                amount: 90,
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+            {
+                action: ACTION_TURN_LEFT,
+                amount: 45,
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+        ];
+
+        const actionsSpikeInTheRoadColored = [
+            {
+                action: ACTION_SET_STROKE_STYLE,
+                amount: 'red',
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+            {
+                action: ACTION_TURN_LEFT,
+                amount: 45,
+            },
+            {
+                action: ACTION_SET_STROKE_STYLE,
+                amount: 'goldenrod',
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+            {
+                action: ACTION_TURN_RIGHT,
+                amount: 90,
+            },
+            {
+                action: ACTION_SET_STROKE_STYLE,
+                amount: 'purple',
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+            {
+                action: ACTION_TURN_LEFT,
+                amount: 45,
+            },
+            {
+                action: ACTION_SET_STROKE_STYLE,
+                amount: 'green',
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+        ];
+
+        const actionsTriangleStar = [
+            ...actionsSpikeInTheRoad,
+            {
+                action: ACTION_TURN_LEFT,
+                amount: 120,
+            },
+            ...actionsSpikeInTheRoad,
+            {
+                action: ACTION_TURN_LEFT,
+                amount: 120,
+            },
+            ...actionsSpikeInTheRoad,
+            {
+                action: ACTION_TURN_LEFT,
+                amount: 120,
+            },
+        ];
+
+        const actionsTriangleStarColored = [
+            {
+                action: ACTION_SET_STROKE_STYLE,
+                amount: 'black',
+            },
+            ...actionsSpikeInTheRoad,
+            {
+                action: ACTION_TURN_LEFT,
+                amount: 120,
+            },
+            {
+                action: ACTION_SET_STROKE_STYLE,
+                amount: 'goldenrod',
+            },
+            ...actionsSpikeInTheRoad,
+            {
+                action: ACTION_TURN_LEFT,
+                amount: 120,
+            },
+            {
+                action: ACTION_SET_STROKE_STYLE,
+                amount: 'red',
+            },
+            ...actionsSpikeInTheRoad,
+            {
+                action: ACTION_TURN_LEFT,
+                amount: 120,
+            },
+        ];
+
+        const actionsSteps = [
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+            {
+                action: ACTION_TURN_LEFT,
+                amount: 90,
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+            {
+                action: ACTION_TURN_RIGHT,
+                amount: 90,
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+        ];
+
+        const actionsStepsColored = [
+            {
+                action: ACTION_SET_STROKE_STYLE,
+                amount: 'goldenrod',
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+            {
+                action: ACTION_TURN_LEFT,
+                amount: 90,
+            },
+            {
+                action: ACTION_SET_STROKE_STYLE,
+                amount: 'red',
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+            {
+                action: ACTION_TURN_RIGHT,
+                amount: 90,
+            },
+            {
+                action: ACTION_SET_STROKE_STYLE,
+                amount: 'green',
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+        ];
+
+        const action160degreesCorner = [
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+            {
+                action: ACTION_TURN_RIGHT,
+                amount: 160,
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+        ];
+
+        const action160degreesCornerColored = [
+            {
+                action: ACTION_SET_STROKE_STYLE,
+                amount: 'red',
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+            {
+                action: ACTION_TURN_RIGHT,
+                amount: 160,
+            },
+            {
+                action: ACTION_SET_STROKE_STYLE,
+                amount: 'green',
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+        ];
+
+        const action170degreesCorner = [
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+            {
+                action: ACTION_TURN_RIGHT,
+                amount: 170,
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+        ];
+
+        const action170degreesCornerColored = [
+            {
+                action: ACTION_SET_STROKE_STYLE,
+                amount: 'red',
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+            {
+                action: ACTION_TURN_RIGHT,
+                amount: 170,
+            },
+            {
+                action: ACTION_SET_STROKE_STYLE,
+                amount: 'green',
+            },
+            {
+                action: ACTION_WALK,
+                amount: 100,
+            },
+        ];
+
+        class Turtle {
+
+            constructor(canvas, actions, iterations) {
+                this.canvas = canvas;
+                this.actions = actions
+                this.iterations = iterations;
+                this.padding = (Math.min(canvas.width, canvas.height) * 0.1);
+                this.isDragon = false;
+                this.isDragonColored = false;
+
+                this.ctx = canvas.getContext("2d");
+                this.templateWalkLength = this.actions.find(a => a.action === ACTION_WALK)?.amount ?? 1;
+
+                this.originalX = this.padding;
+                this.originalY = canvas.height - this.padding;
+                this.x = this.originalX;
+                this.y = this.originalY;
+
+                this.angle = ANGLE_RIGHT;
+
+                this.minX = 0;
+                this.maxX = 0;
+
+                this.minY = 0;
+                this.maxY = 0;
+
+                this.resizeFactor = 1;
+            }
+
+            teleport(x, y) {
+                this.x = x;
+                this.y = y;
+            }
+
+            turnLeft(deg) {
+                this.angle -= parseInt(deg);
+            }
+
+            turnRight(deg) {
+                this.angle += parseInt(deg);
+            }
+
+            calculateTargetPoint(length) {
+                const angleRad = (this.angle * Math.PI) / 180;
+                const targetX = this.x + Math.cos(angleRad) * length;
+                const targetY = this.y + Math.sin(angleRad) * length;
+
+                return { x: targetX, y: targetY };
+            };
+
+            walkAndDraw(length) {
+                const targetPoint = this.calculateTargetPoint(length);
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.x, this.y);
+                this.ctx.lineTo(targetPoint.x, targetPoint.y);
+                this.ctx.stroke();
+                this.x = targetPoint.x;
+                this.y = targetPoint.y;
+            }
+
+            walkAndDrawRecursive(iterations) {
+                for (const action of this.actions) {
+                    switch (action.action) {
+                        case ACTION_TURN_LEFT:
+                            this.turnLeft(action.amount);
+                            break;
+
+                        case ACTION_TURN_RIGHT:
+                            this.turnRight(action.amount);
+                            break;
+
+                        case ACTION_SET_STROKE_STYLE:
+                            this.ctx.strokeStyle = action.amount;
+                            break;
+
+                        case ACTION_WALK:
+                            if (iterations <= 1) {
+                                this.walkAndDraw(action.amount * this.resizeFactor);
+                            } else {
+                                this.walkAndDrawRecursive(iterations - 1);
+                            }
+                            break;
+                    }
+                }
+            }
+
+
+            dragonIterate(sequence) {
+                return [
+                    'C',
+                    ...sequence,
+                    'C',
+                    'R',
+                    ...this.dragonSwapLetters(sequence.reverse()).filter(e => e != 'C'),
+                ];
+            }
+
+            dragonGenerateSequence(iterations) {
+                let sequence = ['R'];
+                for (let i = 1; i < iterations; i++) {
+                    sequence = this.dragonIterate(sequence);
+                }
+                return sequence;
+            }
+
+            dragonSwapLetters(sequence) {
+                return sequence.map(e => e == 'R' ? 'L' : e == 'L' ? 'R' : e);
+            }
+
+            getRandomColor() {
+                const symbols = '0123456789ABC'; // Skip DEF to avoid very bright colors
+                let color = '#'
+                for (let i = 0; i < 6; i++) {
+                    color += symbols[Math.floor(Math.random() * symbols.length)];
+                }
+                return color;
+            }
+
+            walkAndDrawDragon(iterations = null, isColored = null) {
+                if (iterations === null) {
+                    iterations = this.iterations;
+                }
+                if (isColored !== null) {
+                    this.isDragonColored = !!isColored;
+                }
+                const sequence = this.dragonGenerateSequence(iterations);
+                const actions = [];
+                actions.push({
+                    action: ACTION_WALK,
+                    amount: 100,
+                });
+                for (const letter of sequence) {
+                    switch (letter) {
+                        case 'R':
+                            actions.push({
+                                action: ACTION_TURN_RIGHT,
+                                amount: 90,
+                            });
+                            actions.push({
+                                action: ACTION_WALK,
+                                amount: 100,
+                            });
+                            break;
+                        case 'L':
+                            actions.push({
+                                action: ACTION_TURN_LEFT,
+                                amount: 90,
+                            });
+                            actions.push({
+                                action: ACTION_WALK,
+                                amount: 100,
+                            });
+                            break;
+                        case 'C':
+                            if (this.isDragonColored) {
+                                actions.push({
+                                    action: ACTION_SET_STROKE_STYLE,
+                                    amount: this.getRandomColor(),
+                                });
+                            }
+                            break;
+                    }
+                }
+                this.setActions(actions, true);
+            }
+
+            walkAndMeasureRecursive(iterations) {
+                for (const action of this.actions) {
+                    switch (action.action) {
+                        case ACTION_TURN_LEFT:
+                            this.turnLeft(action.amount);
+                            break;
+
+                        case ACTION_TURN_RIGHT:
+                            this.turnRight(action.amount);
+                            break;
+
+                        case ACTION_WALK:
+                            if (iterations <= 1) {
+                                const targetPoint = this.calculateTargetPoint(action.amount);
+                                this.x = targetPoint.x;
+                                this.y = targetPoint.y;
+                                this.minX = Math.min(this.minX, this.x);
+                                this.maxX = Math.max(this.maxX, this.x);
+                                this.minY = Math.min(this.minY, this.y);
+                                this.maxY = Math.max(this.maxY, this.y);
+                            } else {
+                                this.walkAndMeasureRecursive(iterations - 1);
+                            }
+                            break;
+                    }
+                }
+            }
+
+            performMeasures() {
+                this.angle = ANGLE_RIGHT;
+                this.x = 0;
+                this.y = 0;
+
+                this.minX = this.x;
+                this.maxX = this.x;
+
+                this.minY = this.y;
+                this.maxY = this.y;
+
+                this.walkAndMeasureRecursive(this.iterations);
+
+                const availableWidth = this.canvas.width - (this.padding * 2);
+                const availableHeight = this.canvas.height - (this.padding * 2);
+
+                const measuredWidth = this.maxX - this.minX;
+                const measuredHeight = this.maxY - this.minY;
+
+                this.resizeFactor = Math.min(
+                    availableWidth / measuredWidth,
+                    availableHeight / measuredHeight,
+                )
+
+                const recalculatedWidth = measuredWidth * this.resizeFactor;
+                const recalculatedHeight = measuredHeight * this.resizeFactor;
+
+                this.x = this.padding + ((availableWidth - recalculatedWidth) / 2) - (this.minX * this.resizeFactor);
+                this.y = canvas.height - this.padding - ((availableHeight - recalculatedHeight) / 2) - (this.maxY * this.resizeFactor);
+
+                this.angle = ANGLE_RIGHT;
+            }
+
+            setActions(actions, isDragon = false) {
+                this.actions = actions;
+                this.isDragon = isDragon;
+                if (isDragon) {
+                    this.iterations = 1;
+                }
+                this.drawToCanvas();
+            }
+
+            setIterations(iterations) {
+                if (this.isDragon) {
+                    this.walkAndDrawDragon(iterations);
+                    this.iterations = 1
+                } else {
+                    this.iterations = iterations;
+                    this.drawToCanvas();
+                }
+            }
+
+
+            clearAndReset() {
+                this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = "black";
+                ctx.lineWidth = 2;
+            }
+
+            drawToCanvas() {
+                this.clearAndReset();
+                this.performMeasures();
+                this.walkAndDrawRecursive(this.iterations);
+            }
+        }
+
+        const turtle = new Turtle(canvas, actionsSpikeInTheRoad, 1);
+
+        const debounce = (fn, delay) => {
+            let timer = null;
+            return (...args) => {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn(...args), delay);
+            };
+        }
+
+        const resizeCanvas = () => {
+            const rect = canvas.getBoundingClientRect();
+            const width = Math.round(rect.width);
+            const height = Math.round(rect.height);
+
+            if (canvas.width !== width || canvas.height !== height) {
+                canvas.width = width;
+                canvas.height = height;
+
+                debouncedRedrawCanvas();
+            }
+        }
+
+        const redrawCanvas = () => {
+            turtle.drawToCanvas();
+        }
+
+        const debouncedRedrawCanvas = debounce(redrawCanvas, DEBOUNCE_DELAY_MS);
+
+        resizeCanvas();
+
+        window.addEventListener("resize", resizeCanvas);
+        document.getElementById("button-clear").addEventListener("click", () => {
+            turtle.setActions([]);
+            rebuildActionButtons();
+        });
+        document.getElementById("button-spike").addEventListener("click", () => {
+            turtle.setActions(actionsSpikeInTheRoad);
+            rebuildActionButtons();
+        });
+        document.getElementById("button-spike-colored").addEventListener("click", () => {
+            turtle.setActions(actionsSpikeInTheRoadColored);
+            rebuildActionButtons();
+        });
+        document.getElementById("button-triangle-star").addEventListener("click", () => {
+            turtle.setActions(actionsTriangleStar);
+            rebuildActionButtons();
+        });
+        document.getElementById("button-triangle-star-colored").addEventListener("click", () => {
+            turtle.setActions(actionsTriangleStarColored);
+            rebuildActionButtons();
+        });
+        document.getElementById("button-steps").addEventListener("click", () => {
+            turtle.setActions(actionsSteps);
+            rebuildActionButtons();
+        });
+        document.getElementById("button-steps-colored").addEventListener("click", () => {
+            turtle.setActions(actionsStepsColored);
+            rebuildActionButtons();
+        });
+        document.getElementById("button-160-degrees-corner").addEventListener("click", () => {
+            turtle.setActions(action160degreesCorner);
+            rebuildActionButtons();
+        });
+        document.getElementById("button-160-degrees-corner-colored").addEventListener("click", () => {
+            turtle.setActions(action160degreesCornerColored);
+            rebuildActionButtons();
+        });
+        document.getElementById("button-170-degrees-corner").addEventListener("click", () => {
+            turtle.setActions(action170degreesCorner);
+            rebuildActionButtons();
+        });
+        document.getElementById("button-170-degrees-corner-colored").addEventListener("click", () => {
+            turtle.setActions(action170degreesCornerColored);
+            rebuildActionButtons();
+        });
+
+        document.getElementById("button-dragon").addEventListener("click", () => {
+            turtle.walkAndDrawDragon(null, false);
+            rebuildActionButtons();
+        });
+        document.getElementById("button-dragon-colored").addEventListener("click", () => {
+            turtle.walkAndDrawDragon(null, true);
+            rebuildActionButtons();
+        });
+
+        document.querySelectorAll('.button-iterations').forEach((button) => {
+            button.addEventListener("click", () => {
+                turtle.setIterations(button.getAttribute('data-iterations'));
+            });
+        });
+
+        document.getElementById('button-add-action').addEventListener("click", () => {
+            const action = document.getElementById("select-action-to-add").value;
+            const amount = document.getElementById("input-amount-to-add").value;
+            addAction(action, amount);
+        });
+
+
+        const rebuildActionButtons = () => {
+
+            actionsContainer.innerHTML = '';
+
+            for (const i in turtle.actions) {
+                const action = turtle.actions[i];
+                let description = '';
+                switch (action.action) {
+                    case ACTION_WALK:
+                        description = `Draw ${action.amount} steps`;
+                        break;
+                    case ACTION_TURN_LEFT:
+                        description = `Turn ${action.amount} degrees left`;
+                        break;
+                    case ACTION_TURN_RIGHT:
+                        description = `Turn ${action.amount} degrees right`;
+                        break;
+                    case ACTION_SET_STROKE_STYLE:
+                        description = `Set stroke color to ${action.amount}`;
+                        break;
+                    default:
+                        description = JSON.stringify(action);
+                }
+                const button = document.createElement("button");
+                button.type = "button";
+                button.innerHTML = description;
+                button.onclick = () => {
+                    const newActions = turtle.actions.filter((_, index) => index.toString() !== i);
+                    turtle.setActions(newActions);
+                    rebuildActionButtons();
+                }
+                actionsContainer.appendChild(button);
+            }
+        }
+
+        const addAction = (action, amount) => {
+            turtle.setActions([
+                ...turtle.actions,
+                {
+                    action,
+                    amount,
+                }
+            ]);
+            rebuildActionButtons();
+        };
+
+        rebuildActionButtons();
+
+
+    </script>
+</body>
+
+</html>
