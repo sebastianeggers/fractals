@@ -11,6 +11,7 @@
             margin: 0;
             height: 100%;
             font-family: Verdana, Geneva, Tahoma, sans-serif;
+            font-size: 10pt;
         }
 
         h1,
@@ -19,6 +20,7 @@
         h4,
         h5,
         h6 {
+            font-size: 8pt;
             margin-top: 5px;
             margin-bottom: 5px;
             font-family: Verdana, Geneva, Tahoma, sans-serif;
@@ -536,6 +538,8 @@
             }
 
             walkAndDrawDragon(iterations = null, isColored = null) {
+                
+                this.clearAndReset();
                 if (iterations === null) {
                     iterations = this.iterations;
                 }
@@ -756,11 +760,11 @@
 
         document.getElementById("button-dragon").addEventListener("click", () => {
             turtle.walkAndDrawDragon(null, false);
-            rebuildActionButtons();
+            replaceActionButtonsWith('Not available for Dragon Curve!');
         });
         document.getElementById("button-dragon-colored").addEventListener("click", () => {
             turtle.walkAndDrawDragon(null, true);
-            rebuildActionButtons();
+            replaceActionButtonsWith('Not available for Dragon Curve!');
         });
 
         document.querySelectorAll('.button-iterations').forEach((button) => {
@@ -776,6 +780,10 @@
         });
 
 
+        const replaceActionButtonsWith = (content) => {
+            actionsContainer.innerHTML = content;
+        }
+        
         const rebuildActionButtons = () => {
 
             actionsContainer.innerHTML = '';
